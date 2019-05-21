@@ -129,6 +129,7 @@ struct StartupArgs
     std::string strDosProtect;
     std::string strConfigFile;
     std::string strReuseAddr;
+    std::string strInterfaceToGetIP;
     
 };
 
@@ -151,6 +152,7 @@ void DumpStartupArgs(StartupArgs& args)
     PRINTARG(strMaxConnections);
     PRINTARG(strDosProtect);
     PRINTARG(strReuseAddr);
+    PRINTARG(strInterfaceToGetIP);
     Logging::LogMsg(LL_DEBUG, "--------------------------\n");
 }
 
@@ -513,6 +515,8 @@ HRESULT BuildServerConfigurationFromArgs(StartupArgs& argsIn, CStunServerConfig*
     // ---- REUSE ADDRESS SWITCH -------------------------------------------
     config.fReuseAddr = (argsIn.strReuseAddr.length() > 0);
 
+    config.interfaceToGetIP = args.strInterfaceToGetIP;
+
     *pConfigOut = config;
     hr = S_OK;
 
@@ -542,6 +546,7 @@ HRESULT ParseCommandLineArgs(int argc, char** argv, int startindex, StartupArgs*
     cmdline.AddOption("ddp", no_argument, &pStartupArgs->strDosProtect);
     cmdline.AddOption("configfile", required_argument, &pStartupArgs->strConfigFile);
     cmdline.AddOption("reuseaddr", no_argument, &pStartupArgs->strReuseAddr);
+    cmdline.AddOption("interfacetogetip", required_argument, &pStartupArgs->strInterfaceToGetIP);
 
     cmdline.ParseCommandLine(argc, argv, startindex, &fError);
 

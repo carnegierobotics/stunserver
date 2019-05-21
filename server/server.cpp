@@ -151,8 +151,8 @@ HRESULT CStunServer::Initialize(const CStunServerConfig& config)
         ChkIf(pThread==NULL, E_OUTOFMEMORY);
 
         _threads.push_back(pThread);
-        
-        Chk(pThread->Init(_arrSockets, &tsa, _spAuth, (SocketRole)-1, spLimiter));
+
+        Chk(pThread->Init(_arrSockets, &tsa, _spAuth, (SocketRole)-1, spLimiter, &config.interfaceToGetIP));
     }
     else
     {
@@ -169,7 +169,7 @@ HRESULT CStunServer::Initialize(const CStunServerConfig& config)
                 pThread = new CStunSocketThread();
                 ChkIf(pThread==NULL, E_OUTOFMEMORY);
                 _threads.push_back(pThread);
-                Chk(pThread->Init(_arrSockets, &tsa, _spAuth, rolePrimaryRecv, spLimiter));
+                Chk(pThread->Init(_arrSockets, &tsa, _spAuth, rolePrimaryRecv, spLimiter, &config.interfaceToGetIP));
             }
         }
     }

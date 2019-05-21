@@ -52,6 +52,8 @@ public:
 
     bool fReuseAddr; // if true, the socket option SO_REUSEADDR will be set
 
+    std::string interfaceToGetIP; // If not empty use this string to query an interface for an IP to return from a STUN request
+
     CStunServerConfig();
 };
 

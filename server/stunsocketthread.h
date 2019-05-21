@@ -33,7 +33,7 @@ public:
     CStunSocketThread();
     ~CStunSocketThread();
     
-    HRESULT Init(CStunSocket* arrayOfFourSockets, TransportAddressSet* pTSA, IStunAuth* pAuth, SocketRole rolePrimaryRecv, boost::shared_ptr<RateLimiter>& _spRateLimiter);
+    HRESULT Init(CStunSocket* arrayOfFourSockets, TransportAddressSet* pTSA, IStunAuth* pAuth, SocketRole rolePrimaryRecv, boost::shared_ptr<RateLimiter>& _spRateLimiter, const std::string* interfaceToGetIP);
     HRESULT Start();
 
     HRESULT SignalForStop(bool fPostMessages);
@@ -73,6 +73,8 @@ private:
     
     boost::shared_ptr<RateLimiter> _spLimiter;
     
+    std::string _interfaceToGetIP;
+
     HRESULT InitThreadBuffers();
     void UninitThreadBuffers();
     

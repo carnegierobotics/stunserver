@@ -15,8 +15,9 @@
 */
 
 
-
 #include "commonincludes.hpp"
+
+#include "adapters.h"
 #include "stuncore.h"
 #include "stunsocket.h"
 #include "stunsocketthread.h"
@@ -47,7 +48,7 @@ void CStunSocketThread::ClearSocketArray()
     _socks.clear();
 }
 
-HRESULT CStunSocketThread::Init(CStunSocket* arrayOfFourSockets, TransportAddressSet* pTSA, IStunAuth* pAuth, SocketRole rolePrimaryRecv, boost::shared_ptr<RateLimiter>& spLimiter)
+HRESULT CStunSocketThread::Init(CStunSocket* arrayOfFourSockets, TransportAddressSet* pTSA, IStunAuth* pAuth, SocketRole rolePrimaryRecv, boost::shared_ptr<RateLimiter>& spLimiter, const std::string* interfaceToGetIP)
 {
     HRESULT hr = S_OK;
     
@@ -97,6 +98,8 @@ HRESULT CStunSocketThread::Init(CStunSocket* arrayOfFourSockets, TransportAddres
     _spAuth.Attach(pAuth);
     
     _spLimiter = spLimiter;
+
+    _interfaceToGetIP = *interfaceToGetIP;
 
 Cleanup:
     return hr;
@@ -326,7 +329,25 @@ void CStunSocketThread::Run()
         {
             _msgIn.addrLocal.SetPort(pSocket->GetLocalAddress().GetPort());
         }
-        
+
+        // Rewrite the receive from address if desired to get around custom networking
+        if (_interfaceToGetIP != "") {
+            // Don't check result, fails right out if unsuccesful
+            char szIPRemoteOrig[100] = {};
+            _msgIn.addrRemote.ToStringBuffer(szIPRemoteOrig, 100);
+
+            HRESULT hr = GetSocketAddressForAdapter(AF_INET, _interfaceToGetIP.c_str(), _msgIn.addrRemote.GetPort(), &_msgIn.addrRemote);
+            if (FAILED(hr))
+            {
+                Logging::LogMsg(LL_ALWAYS, "Unable to find matching adapter or interface for remote address option: %s", _interfaceToGetIP.c_str());
+                continue;
+            }
+
+            char szIPRemoteMapped[100] = {};
+            _msgIn.addrRemote.ToStringBuffer(szIPRemoteMapped, 100);
+
+            Logging::LogMsg(LL_VERBOSE, "recvfrom returns remapping remote address from %s to %s", szIPRemoteOrig, szIPRemoteMapped);
+        }
 
         if (Logging::GetLogLevel() >= LL_VERBOSE)
         {
