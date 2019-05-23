@@ -330,25 +330,6 @@ void CStunSocketThread::Run()
             _msgIn.addrLocal.SetPort(pSocket->GetLocalAddress().GetPort());
         }
 
-        // Rewrite the receive from address if desired to get around custom networking
-        if (_interfaceToGetIP != "") {
-            // Don't check result, fails right out if unsuccesful
-            char szIPRemoteOrig[100] = {};
-            _msgIn.addrRemote.ToStringBuffer(szIPRemoteOrig, 100);
-
-            HRESULT hr = GetSocketAddressForAdapter(AF_INET, _interfaceToGetIP.c_str(), _msgIn.addrRemote.GetPort(), &_msgIn.addrRemote);
-            if (FAILED(hr))
-            {
-                Logging::LogMsg(LL_ALWAYS, "Unable to find matching adapter or interface for remote address option: %s", _interfaceToGetIP.c_str());
-                continue;
-            }
-
-            char szIPRemoteMapped[100] = {};
-            _msgIn.addrRemote.ToStringBuffer(szIPRemoteMapped, 100);
-
-            Logging::LogMsg(LL_VERBOSE, "recvfrom returns remapping remote address from %s to %s", szIPRemoteOrig, szIPRemoteMapped);
-        }
-
         if (Logging::GetLogLevel() >= LL_VERBOSE)
         {
             _msgIn.addrRemote.ToStringBuffer(szIPRemote, 100);
@@ -400,6 +381,7 @@ HRESULT CStunSocketThread::ProcessRequestAndSendResponse()
     HRESULT hr = S_OK;
     int sendret = -1;
     int sockout = -1;
+    CSocketAddress* pOverrideMappedAddress = NULL;
 
     // Reset the reader object and re-attach the buffer
     _reader.Reset();
@@ -411,8 +393,31 @@ HRESULT CStunSocketThread::ProcessRequestAndSendResponse()
     ChkIf(_reader.GetState() != CStunMessageReader::BodyValidated, E_FAIL);
     
     // msgIn and msgOut are already initialized
-    
-    Chk(CStunRequestHandler::ProcessRequest(_msgIn, _msgOut, &_tsa, _spAuth));
+
+    // Find an address to override the mapped address with if desired
+    // useful for certain firewall configurations
+    if (_interfaceToGetIP != "") {
+        // Don't check result, fails right out if unsuccesful
+        char szIPRemoteOrig[100] = {};
+        _msgIn.addrRemote.ToStringBuffer(szIPRemoteOrig, 100);
+
+        CSocketAddress overrideMappedAddress;
+        HRESULT hr = GetSocketAddressForAdapter(AF_INET, _interfaceToGetIP.c_str(), _msgIn.addrRemote.GetPort(), &overrideMappedAddress);
+        if (FAILED(hr))
+        {
+            Logging::LogMsg(LL_ALWAYS, "Unable to find matching adapter or interface for remote address option: %s", _interfaceToGetIP.c_str());
+        }
+        else {
+            char szIPRemoteMapped[100] = {};
+            overrideMappedAddress.ToStringBuffer(szIPRemoteMapped, 100);
+
+            Logging::LogMsg(LL_VERBOSE, "remapping remote address from %s to %s", szIPRemoteOrig, szIPRemoteMapped);
+
+            pOverrideMappedAddress = &overrideMappedAddress;
+        }
+    }
+
+    Chk(CStunRequestHandler::ProcessRequest(_msgIn, _msgOut, &_tsa, _spAuth, pOverrideMappedAddress));
 
     ASSERT(_tsa.set[_msgOut.socketrole].fValid);
     ASSERT(_arrSendSockets[_msgOut.socketrole].IsValid());

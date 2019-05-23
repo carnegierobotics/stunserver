@@ -14,8 +14,8 @@
    limitations under the License.
 */
 
-
 #include "commonincludes.hpp"
+
 #include "stuncore.h"
 #include "messagehandler.h"
 #include "socketrole.h"
@@ -36,7 +36,7 @@ _fLegacyMode(false)
 }
 
 
-HRESULT CStunRequestHandler::ProcessRequest(const StunMessageIn& msgIn, StunMessageOut& msgOut, TransportAddressSet* pAddressSet, /*optional*/ IStunAuth* pAuth)
+HRESULT CStunRequestHandler::ProcessRequest(const StunMessageIn& msgIn, StunMessageOut& msgOut, TransportAddressSet* pAddressSet, /*optional*/ IStunAuth* pAuth, CSocketAddress* pOverrideMappedAddress)
 {
     HRESULT hr = S_OK;
     
@@ -68,13 +68,13 @@ HRESULT CStunRequestHandler::ProcessRequest(const StunMessageIn& msgIn, StunMess
     handler._pMsgOut->addrDest = handler._pMsgIn->addrRemote; // destination address is same as source
     
     // now call the function that does all the real work
-    hr = handler.ProcessRequestImpl();
+    hr = handler.ProcessRequestImpl(pOverrideMappedAddress);
     
 Cleanup:
     return hr;
 }
 
-HRESULT CStunRequestHandler::ProcessRequestImpl()
+HRESULT CStunRequestHandler::ProcessRequestImpl(CSocketAddress* pOverrideMappedAddress)
 {
     HRESULT hrResult = S_OK;
     HRESULT hr = S_OK;
@@ -140,7 +140,7 @@ HRESULT CStunRequestHandler::ProcessRequestImpl()
     
     if (_error.errorcode == 0)
     {
-        hrResult = ProcessBindingRequest();
+        hrResult = ProcessBindingRequest(pOverrideMappedAddress);
         if (FAILED(hrResult) && (_error.errorcode == 0))
         {
             _error.errorcode = STUN_ERROR_BADREQUEST;
@@ -199,7 +199,7 @@ void CStunRequestHandler::BuildErrorResponse()
 }
 
 
-HRESULT CStunRequestHandler::ProcessBindingRequest()
+HRESULT CStunRequestHandler::ProcessBindingRequest(CSocketAddress* pOverrideMappedAddress)
 {
     CStunMessageReader& reader = *(_pMsgIn->pReader);
     
@@ -327,8 +327,14 @@ HRESULT CStunRequestHandler::ProcessBindingRequest()
     // SOURCE-ADDRESS (RESPONSE-ORIGIN)
     // CHANGED-ADDRESS (OTHER-ADDRESS)
     // XOR-MAPPED-ADDRESS (XOR-MAPPED_ADDRESS-OPTIONAL)
-    
-    builder.AddMappedAddress(_pMsgIn->addrRemote);
+
+    if (pOverrideMappedAddress != NULL) {
+        builder.AddMappedAddress(*pOverrideMappedAddress);
+    } else {
+        builder.AddMappedAddress(_pMsgIn->addrRemote);
+    }
+
+    Logging::LogMsg(LL_ALWAYS, "fSendOriginAddress3 %d", fSendOriginAddress);
 
     if (fSendOriginAddress)
     {
@@ -341,8 +347,11 @@ HRESULT CStunRequestHandler::ProcessBindingRequest()
     }
 
     // send back the XOR-MAPPED-ADDRESS (encoded as an optional message for legacy clients)
-    builder.AddXorMappedAddress(_pMsgIn->addrRemote);
-    
+    if (pOverrideMappedAddress != NULL) {
+        builder.AddXorMappedAddress(*pOverrideMappedAddress);
+    } else {
+        builder.AddXorMappedAddress(_pMsgIn->addrRemote);
+    }
     
     // finally - if we're supposed to have a message integrity attribute as a result of authorization, add it at the very end
     if (_integrity.fSendWithIntegrity)

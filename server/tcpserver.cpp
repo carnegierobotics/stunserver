@@ -611,7 +611,7 @@ HRESULT CTCPStunThread::ReceiveBytesForConnection(StunConnection* pConn)
             allowed_to_pass = this->RateCheck(msgIn.addrRemote);
             ChkIf(allowed_to_pass == false, E_FAIL);
             
-            Chk(CStunRequestHandler::ProcessRequest(msgIn, msgOut, &_tsa, _spAuth));
+            Chk(CStunRequestHandler::ProcessRequest(msgIn, msgOut, &_tsa, _spAuth, NULL));
             
             // success - transition to the response state
             pConn->_state = ConnectionState_Transmitting;

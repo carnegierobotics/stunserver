@@ -75,15 +75,15 @@ struct StunErrorCode
 class CStunRequestHandler
 {
 public:
-    static HRESULT ProcessRequest(const StunMessageIn& msgIn, StunMessageOut& msgOut, TransportAddressSet* pAddressSet, /*optional*/ IStunAuth* pAuth);
+    static HRESULT ProcessRequest(const StunMessageIn& msgIn, StunMessageOut& msgOut, TransportAddressSet* pAddressSet, /*optional*/ IStunAuth* pAuth, CSocketAddress* pOverrideMappedAddress);
 private:
     
     CStunRequestHandler();
 
-    HRESULT ProcessBindingRequest();
+    HRESULT ProcessBindingRequest(CSocketAddress* pOverrideMappedAddress);
     void BuildErrorResponse();
     HRESULT ValidateAuth();
-    HRESULT ProcessRequestImpl();
+    HRESULT ProcessRequestImpl(CSocketAddress* pOverrideMappedAddress);
     
     // input
     IStunAuth* _pAuth;
